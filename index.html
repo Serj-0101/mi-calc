@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Сайт-визитка с защищенной галереей</title>
+    <style>
+        :root {
+            --bg-color: #121212;
+            --surface-color: #1e1e1e;
+            --primary-color: #bb86fc;
+            --text-primary: #ffffff;
+            --text-secondary: #aaaaaa;
+            --danger: #cf6679;
+            --border-radius: 8px;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+        }
+
+        /* --- Login Screen --- */
+        #login-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+        }
+
+        .login-card {
+            background-color: var(--surface-color);
+            padding: 40px;
+            border-radius: var(--border-radius);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+        }
+
+        .login-card h1 { margin-top: 0; font-size: 24px; }
+        .login-card p { color: var(--text-secondary); margin-bottom: 20px; font-size: 14px; }
+        
+        input[type="password"], input[type="text"], select, input[type="url"] {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 15px;
+            border: 1px solid #333;
+            border-radius: 4px;
+            background-color: #2c2c2c;
+            color: white;
+            box-sizing: border-box;
+        }
+
+        button {
+            background-color: var(--primary-color);
+            color: #000;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            width: 100%;
+            transition: opacity 0.2s;
+        }
+
+        button:hover { opacity: 0.9; }
+
+        .error-msg {
+            color: var(--danger);
+            font-size: 13px;
+            margin-bottom: 10px;
+            display: none;
+        }
+
+        /* --- Dashboard Screen --- */
+        #dashboard-screen {
+            display: none;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: var(--surface-color);
+            padding: 20px;
+            border-radius: var(--border-radius);
+            margin-bottom: 20px;
+        }
+
+        .user-info { display: flex; align-items: center; gap: 15px; }
+        .avatar {
+            width: 50px; height: 50px;
+            background-color: var(--primary-color);
+            color: #000;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 50%;
+            font-weight: bold;
+            font-size: 20px;
+        }
+        .user-details h2 { margin: 0; font-size: 20px; }
+        .user-details p { margin: 0; color: var(--text-secondary); font-size: 14px; }
+        
+        .logout-btn { width: auto; background-color: transparent; border: 1px solid var(--primary-color); color: var(--primary-color); }
+        .logout-btn:hover { background-color: rgba(187, 134, 252, 0.1); }
+
+        /* --- Controls --- */
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .controls select { width: auto; min-width: 200px; margin-bottom: 0; }
+        .add-photo-btn { width: auto; display: flex; align-items: center; gap: 8px; }
+
+        /* --- Gallery --- */
+        .gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+        }
+
+        .gallery-item {
+            background-color: var(--surface-color);
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            transition: transform 0.2s;
+        }
+        .gallery-item:hover { transform: translateY(-5px); }
+
+        .gallery-item img {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            display: block;
+        }
+
+        .item-details { padding: 15px; }
+        .item-title { margin: 0 0 10px 0; font-size: 16px; }
+        .item-tags { display: flex; gap: 8px; flex-wrap: wrap; }
+        .tag {
+            background-color: #333;
+            font-size: 12px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            color: var(--text-secondary);
+        }
+
+        /* --- Modal --- */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: none; align-items: center; justify-content: center;
+            z-index: 1000;
+        }
+        .modal {
+            background-color: var(--surface-color);
+            padding: 30px;
+            border-radius: var(--border-radius);
+            width: 90%; max-width: 500px;
+        }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .modal-header h2 { margin: 0; font-size: 20px; }
+        .close-btn { background: none; border: none; color: white; font-size: 24px; cursor: pointer; width: auto; padding: 0; }
+        
+        .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+        .cancel-btn { background-color: #333; color: white; }
+    </style>
+</head>
+<body>
+
+    <!-- Login Screen -->
+    <div id="login-screen">
+        <div class="login-card">
+            <h1>Вход в портфолио</h1>
+            <p>Введите пароль для доступа к управлению галереей</p>
+            <div id="error-msg" class="error-msg">Неверный пароль. Попробуйте еще раз.</div>
+            <input type="password" id="password-input" placeholder="Пароль доступа" onkeypress="if(event.key === 'Enter') checkPassword()">
+            <button onclick="checkPassword()">Войти в систему</button>
+            <p style="margin-top: 20px; font-size: 12px; color: #666;">Подсказка для теста: <b>простой</b></p>
+        </div>
+    </div>
+
+    <!-- Dashboard Screen -->
+    <div id="dashboard-screen">
+        <div class="header">
+            <div class="user-info">
+                <div class="avatar">NT</div>
+                <div class="user-details">
+                    <h2>Добавить потом</h2>
+                    <p>Разработчик & Художник</p>
+                </div>
+            </div>
+            <button class="logout-btn" onclick="logout()">Выйти</button>
+        </div>
+
+        <div style="margin-bottom: 20px; color: var(--text-secondary); font-size: 14px;">
+            <h3>Структура папок (VPS)</h3>
+            <p>📁 var/www/app-uploads (Облачное хранилище)</p>
+        </div>
+
+        <div class="controls">
+            <select id="category-filter" onchange="renderGallery()">
+                <option value="all">Все категории</option>
+                <option value="Стрит-арт">Стрит-арт</option>
+                <option value="Архитектура">Архитектура</option>
+                <option value="Графика">Графика</option>
+                <option value="AI Генерации">AI Генерации</option>
+            </select>
+
+            <select id="style-filter" onchange="renderGallery()">
+                <option value="all">Все стили</option>
+                <option value="Высокий контраст">Высокий контраст</option>
+                <option value="Минимализм">Минимализм</option>
+                <option value="Реализм">Реализм</option>
+                <option value="Скетч">Скетч</option>
+            </select>
+
+            <button class="add-photo-btn" onclick="openModal()">📷 Добавить фото</button>
+        </div>
+
+        <div class="gallery" id="gallery-container">
+            <!-- Gallery items will be injected here -->
+        </div>
+    </div>
+
+    <!-- Upload Modal -->
+    <div class="modal-overlay" id="upload-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>Загрузка нового файла</h2>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+            </div>
+            
+            <label style="display:block; margin-bottom:5px; font-size: 14px; color: var(--text-secondary);">URL изображения (Интернет)</label>
+            <input type="url" id="new-url" placeholder="https://example.com/image.jpg" required>
+
+            <label style="display:block; margin-bottom:5px; font-size: 14px; color: var(--text-secondary);">Название фотографии</label>
+            <input type="text" id="new-title" placeholder="Введите название" required>
+
+            <label style="display:block; margin-bottom:5px; font-size: 14px; color: var(--text-secondary);">Категория</label>
+            <select id="new-category">
+                <option value="Стрит-арт">Стрит-арт</option>
+                <option value="Архитектура">Архитектура</option>
+                <option value="Графика">Графика</option>
+                <option value="AI Генерации">AI Генерации</option>
+            </select>
+
+            <label style="display:block; margin-bottom:5px; font-size: 14px; color: var(--text-secondary);">Стиль</label>
+            <select id="new-style">
+                <option value="Высокий контраст">Высокий контраст</option>
+                <option value="Минимализм">Минимализм</option>
+                <option value="Реализм">Реализм</option>
+                <option value="Скетч">Скетч</option>
+            </select>
+
+            <div class="modal-actions">
+                <button class="cancel-btn" onclick="closeModal()">Отмена</button>
+                <button onclick="addPhoto()">Загрузить и распределить</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Исходные данные с изображениями ИЗ ИНТЕРНЕТА (CDN/Unsplash)
+        let galleryData = [
+            { id: 1, title: 'Уличный мурал', category: 'Стрит-арт', style: 'Высокий контраст', url: 'https://images.unsplash.com/photo-1499781350541-7783f6c6a0c8?auto=format&fit=crop&w=600&q=80' },
+            { id: 2, title: 'Абстрактный фасад', category: 'Архитектура', style: 'Минимализм', url: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=600&q=80' },
+            { id: 3, title: 'Геометрия линий', category: 'Графика', style: 'Скетч', url: 'https://images.unsplash.com/photo-1541701494587-cb58502866ab?auto=format&fit=crop&w=600&q=80' },
+            { id: 4, title: 'Неоновый город', category: 'AI Генерации', style: 'Реализм', url: 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=600&q=80' },
+            { id: 5, title: 'Монохромное здание', category: 'Архитектура', style: 'Высокий контраст', url: 'https://images.unsplash.com/photo-1428366890462-dd4baecf492b?auto=format&fit=crop&w=600&q=80' },
+            { id: 6, title: 'Кибер-робот', category: 'AI Генерации', style: 'Скетч', url: 'https://images.unsplash.com/photo-1620712943543-bcc4688e7485?auto=format&fit=crop&w=600&q=80' }
+        ];
+
+        // Авторизация
+        function checkPassword() {
+            const pwd = document.getElementById('password-input').value;
+            if (pwd === 'admin') {
+                document.getElementById('login-screen').style.display = 'none';
+                document.getElementById('dashboard-screen').style.display = 'block';
+                renderGallery();
+            } else {
+                document.getElementById('error-msg').style.display = 'block';
+            }
+        }
+
+        function logout() {
+            document.getElementById('password-input').value = '';
+            document.getElementById('error-msg').style.display = 'none';
+            document.getElementById('dashboard-screen').style.display = 'none';
+            document.getElementById('login-screen').style.display = 'flex';
+        }
+
+        // Рендер галереи
+        function renderGallery() {
+            const container = document.getElementById('gallery-container');
+            const catFilter = document.getElementById('category-filter').value;
+            const styleFilter = document.getElementById('style-filter').value;
+
+            container.innerHTML = '';
+
+            const filteredData = galleryData.filter(item => {
+                const matchCat = (catFilter === 'all') || (item.category === catFilter);
+                const matchStyle = (styleFilter === 'all') || (item.style === styleFilter);
+                return matchCat && matchStyle;
+            });
+
+            filteredData.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'gallery-item';
+                div.innerHTML = `
+                    <img src="${item.url}" alt="${item.title}" loading="lazy">
+                    <div class="item-details">
+                        <h3 class="item-title">${item.title}</h3>
+                        <div class="item-tags">
+                            <span class="tag">${item.category}</span>
+                            <span class="tag">${item.style}</span>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        // Модальное окно
+        function openModal() {
+            document.getElementById('upload-modal').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('upload-modal').style.display = 'none';
+            document.getElementById('new-url').value = '';
+            document.getElementById('new-title').value = '';
+        }
+
+        function addPhoto() {
+            const url = document.getElementById('new-url').value;
+            const title = document.getElementById('new-title').value;
+            const category = document.getElementById('new-category').value;
+            const style = document.getElementById('new-style').value;
+
+            if (!url || !title) {
+                alert('Пожалуйста, заполните URL и название.');
+                return;
+            }
+
+            galleryData.unshift({
+                id: Date.now(),
+                url: url,
+                title: title,
+                category: category,
+                style: style
+            });
+
+            closeModal();
+            renderGallery();
+        }
+    </script>
+</body>
+</html>
